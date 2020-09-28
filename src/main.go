@@ -53,10 +53,29 @@ func main() {
 				goto migrate
 			}
 
+			mappings := promptForMapping(migration, project, chProject)
 
-			mapppings := promptForMapping(migration, project, chProject)
+			// Run the Migration on each of the columns listed.
+			// This loop is based on the total columns in GitHub's Project
+			for _, mapping := range mappings {
+				cards, _, _ := migration.GitHubProjectCards(mapping.GitHubColumn)
 
-			fmt.Println(mapppings)
+				for i, card := range cards {
+
+					fmt.Println("Migrating: " + *card.Note)
+					migration.GithubCardToClubhouseStory(mapping.ClubhouseState, chProject, card)
+
+					// Export Check
+					if i % 4 == 0 {
+						if yesNo("Is the export working so far?") == false {
+							fmt.Println("JUMP SHIP!")
+							os.Exit(1)
+						}
+					}
+				}
+			}
+
+			fmt.Println(mappings)
 
 		default:
 			fmt.Println("Command Not Found.")
