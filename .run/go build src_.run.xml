@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="go build src/" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+    <module name="github-projects-to-clubhouse" />
+    <working_directory value="$PROJECT_DIR$/src" />
+    <go_parameters value="-i -o ../build/ghch" />
+    <kind value="DIRECTORY" />
+    <filePath value="$PROJECT_DIR$/src/main.go" />
+    <directory value="$PROJECT_DIR$/src" />
+    <output_directory value="$PROJECT_DIR$/build" />
+    <method v="2" />
+  </configuration>
+</component>
