@@ -98,12 +98,12 @@ func (migration *Migration) ClubhouseProjectStates(story clubhouse.CreateStory) 
 	return migration.clubhouseClient().CreateStory(story)
 }
 
-func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.State, project *clubhouse.Project, card *github.ProjectCard) (clubhouse.Story, error){
+func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.State, project clubhouse.Project, card *github.ProjectCard) (clubhouse.Story, error){
 	return migration.clubhouseClient().CreateStory(clubhouse.CreateStory{
 		CreatedAt: &card.CreatedAt.Time,
 		Name: *card.Note,
 		ProjectID: project.ID,
-		ExternalID: *card.ContentURL,
+		ExternalID: *card.URL,
 		WorkflowStateID: state.ID,
 	})
 }
