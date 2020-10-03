@@ -19,7 +19,6 @@ func main() {
 	migrateCommand = flag.NewFlagSet("migrate", flag.ExitOnError)
 	ghApiToken := migrateCommand.String("gh-token", "", "Github API Token")
 	chApiToken := migrateCommand.String("ch-token", "", "Clubhouse API Token")
-	mapFile := migrateCommand.String("map", "", "Mapping Json File")
 
 	if len(os.Args) < 2 {
 		showCommandHelp()
@@ -30,7 +29,6 @@ func main() {
 	switch os.Args[1] {
 		case "migrate":
 			_ = migrateCommand.Parse(os.Args[2:])
-			fmt.Println(*mapFile)
 
 			migrate:
 			ex, err := os.Executable()
