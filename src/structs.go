@@ -9,6 +9,7 @@ import (
 	"golang.org/x/oauth2"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Mapping struct {
@@ -99,8 +100,8 @@ func (migration *Migration) ListClubhouseEpics() ([]clubhouse.Epic, error){
 }
 
 func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowState, project clubhouse.Project, card *github.ProjectCard) (*clubhouse.Story, error){
-	note := notNullString(card.Note, "- Github Card Issue -")
-	name, _ := goutils.Abbreviate(note, 64)
+	name := notNullString(card.Note, "- Github Card Issue -")
+	name = MakeTitle(name)
 	var payload clubhouse.CreateStoryParams
 
 	re := regexp.MustCompile(`^https:\/\/api\.github\.com\/repos\/(.*)\/(.*)\/issues/(.*)$`)
@@ -153,7 +154,7 @@ func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowS
 	} else {
 		payload = clubhouse.CreateStoryParams{
 			Name: name,
-			Description: note,
+			Description: *card.Note,
 			ProjectID: project.ID,
 			StoryType: clubhouse.StoryTypeFeature,
 			Archived: false,
@@ -163,4 +164,13 @@ func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowS
 	}
 
 	return migration.clubhouseClient().StoryCreate(payload)
+}
+
+func MakeTitle(title string) string {
+	title = strings.ReplaceAll(title, "\r", "\n")
+	title = strings.ReplaceAll(title, "\n\n", "\n")
+	title = strings.Split(title, "\n")[0]
+	title, _ = goutils.Abbreviate(title, 64)
+
+	return title
 }

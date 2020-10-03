@@ -3,14 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/Masterminds/goutils"
 	"github.com/google/go-github/github"
 	"github.com/gookit/color"
 	"github.com/manifoldco/promptui"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var migrateCommand *flag.FlagSet
@@ -65,9 +63,7 @@ func main() {
 				cards = reverseArray(cards)
 
 				for _, card := range cards {
-					name, _ := goutils.Abbreviate(notNullString(card.Note, "- Github Card Issue -"), 64)
-					name = strings.ReplaceAll(name, "\n", "")
-					name = strings.ReplaceAll(name, "\r", "")
+					name := MakeTitle(notNullString(card.Note, "- Github Card Issue -"))
 					fmt.Println("Migrating: " + name)
 					_, err = migration.GithubCardToClubhouseStory(mapping.ClubhouseState, *chProject, card)
 
