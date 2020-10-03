@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/Masterminds/goutils"
 	"github.com/google/go-github/github"
 	"github.com/gookit/color"
 	"github.com/manifoldco/promptui"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var migrateCommand *flag.FlagSet
@@ -27,7 +29,7 @@ func main() {
 	// Switch for the Sub Commands
 	switch os.Args[1] {
 		case "migrate":
-			migrateCommand.Parse(os.Args[2:])
+			_ = migrateCommand.Parse(os.Args[2:])
 			fmt.Println(*mapFile)
 
 			migrate:
@@ -53,29 +55,31 @@ func main() {
 				goto migrate
 			}
 
-			mappings := promptForMapping(migration, project, chProject)
+			mappings := promptForMapping(migration, project)
 
 			// Run the Migration on each of the columns listed.
 			// This loop is based on the total columns in GitHub's Project
 			for _, mapping := range mappings {
 				cards, _, _ := migration.GitHubProjectCards(mapping.GitHubColumn)
 
-				for i, card := range cards {
+				// Reverse the order so we are able to have the old cards created first
+				//  then the new cards have the highest number and order (so they will be on top)
+				cards = reverseArray(cards)
 
-					fmt.Println("Migrating: " + *card.Note)
-					migration.GithubCardToClubhouseStory(mapping.ClubhouseState, chProject, card)
+				for _, card := range cards {
+					name, _ := goutils.Abbreviate(notNullString(card.Note, "- Github Card Issue -"), 64)
+					name = strings.ReplaceAll(name, "\n", "")
+					name = strings.ReplaceAll(name, "\r", "")
+					fmt.Println("Migrating: " + name)
+					_, err = migration.GithubCardToClubhouseStory(mapping.ClubhouseState, *chProject, card)
 
-					// Export Check
-					if i % 4 == 0 {
-						if yesNo("Is the export working so far?") == false {
-							fmt.Println("JUMP SHIP!")
-							os.Exit(1)
-						}
+					if err != nil {
+						fmt.Println("ERR")
+						fmt.Println(err)
 					}
 				}
 			}
-
-			fmt.Println(mappings)
+			fmt.Println("Migration Complete")
 
 		default:
 			fmt.Println("Command Not Found.")
@@ -106,12 +110,17 @@ func yesNo(message string) bool {
 	return result == "Yes"
 }
 
-func inRepoList(repos []github.Repository, name string) int {
-
-	for i, repo := range repos {
-		if *repo.FullName == name {
-			return i
-		}
+func notNullString(val *string, def string) string {
+	if val != nil {
+		return *val
 	}
-	return -1
+	return def
+}
+
+func reverseArray(arr []*github.ProjectCard) []*github.ProjectCard {
+	newArr := make([]*github.ProjectCard, 0, len(arr))
+	for i := len(arr)-1; i >= 0; i-- {
+		newArr = append(newArr, arr[i])
+	}
+	return newArr
 }

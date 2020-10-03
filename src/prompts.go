@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/google/go-github/github"
-	"github.com/jnormington/clubhouse-go"
 	"github.com/manifoldco/promptui"
+	"github.com/nhalstead/clubhouse"
 	"strings"
 )
 
@@ -92,8 +92,8 @@ func promptForRepoProjectSelect(migration Migration, repo github.Repository) git
 	return *projects[i]
 }
 
-func promptForProjectSelect(migration Migration) clubhouse.Project {
-	projects, _ := migration.ClubhouseProjects()
+func promptForProjectSelect(migration Migration) *clubhouse.Project {
+	projects, _ := migration.ListClubhouseProjects()
 
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
@@ -115,13 +115,13 @@ func promptForProjectSelect(migration Migration) clubhouse.Project {
 	return projects[i]
 }
 
-func promptForMapping(migration Migration, project github.Project, chProject clubhouse.Project) []Mapping {
+func promptForMapping(migration Migration, project github.Project) []Mapping {
 	var mapping []Mapping
 	var toMap []*github.ProjectColumn
 	var workflow clubhouse.Workflow
 
 	projectColumns, _, _ := migration.GitHubProjectColumns(project)
-	projectWorkflows, _ := migration.ClubhouseWorkflow()
+	projectWorkflows, _ := migration.ListClubhouseWorkflow()
 
 	if len(projectWorkflows) == 1 {
 		// Auto Select First Workflow
@@ -133,7 +133,7 @@ func promptForMapping(migration Migration, project github.Project, chProject clu
 			Active:   "\U000027A1 {{ .Name }}",
 			Inactive: "   {{ .Name }}",
 			Selected: "\U000027A1 Clubhouse Workflow: {{ .Name }}",
-			Details: "\n--------- Project ----------\n Name:\t{{ .Name }}",
+			Details: "\n--------- Project ----------\n Name:\t{{ .Name }}\n Description:\t{{ .Description }}",
 		}
 
 		prompt := promptui.Select{

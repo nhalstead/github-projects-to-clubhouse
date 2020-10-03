@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"github.com/Masterminds/goutils"
 	"github.com/google/go-github/github"
-	"github.com/jnormington/clubhouse-go"
+	"github.com/nhalstead/clubhouse"
 	"golang.org/x/oauth2"
+	"regexp"
+	"strconv"
 )
 
 type Mapping struct {
-	ClubhouseState clubhouse.State
 	GitHubColumn github.ProjectColumn
+	ClubhouseState clubhouse.WorkflowState
 }
 
 type ConfigMapping struct {
@@ -20,8 +24,9 @@ type Migration struct {
 	Maps []Mapping
 	ClubhouseToken string
 	GithubToken string
+	PerColumnCardLimit int
 
-	Clubhouse *clubhouse.Clubhouse
+	Clubhouse *clubhouse.Client
 	Github *github.Client
 
 	ctx context.Context
@@ -30,6 +35,7 @@ type Migration struct {
 func NewClient(file string) Migration {
 	return Migration {
 		ctx: context.Background(),
+		PerColumnCardLimit: 1200,
 	}
 }
 
@@ -48,10 +54,11 @@ func (migration *Migration) githubClient() *github.Client {
 }
 
 // Return the clubhouse Client
-func (migration *Migration) clubhouseClient() *clubhouse.Clubhouse {
+func (migration *Migration) clubhouseClient() *clubhouse.Client {
 	if migration.Clubhouse == nil {
 		migration.Clubhouse = clubhouse.New(migration.ClubhouseToken)
 	}
+
 	return migration.Clubhouse
 }
 
@@ -73,37 +80,87 @@ func (migration *Migration) GitHubProjectColumns(project github.Project) ([]*git
 }
 
 func (migration *Migration) GitHubProjectCards(column github.ProjectColumn) ([]*github.ProjectCard, *github.Response, error){
-	return migration.githubClient().Projects.ListProjectCards(migration.ctx, *column.ID, nil)
+	// Not going down the path of pagination the entire request yet.
+	options := &github.ProjectCardListOptions {}
+	options.PerPage = migration.PerColumnCardLimit
+	return migration.githubClient().Projects.ListProjectCards(migration.ctx, *column.ID, options)
 }
 
-func (migration *Migration) ClubhouseProjects() ([]clubhouse.Project, error){
+func (migration *Migration) ListClubhouseProjects() ([]*clubhouse.Project, error){
 	return migration.clubhouseClient().ListProjects()
 }
 
-func (migration *Migration) ClubhouseWorkflow() ([]clubhouse.Workflow, error){
-	return migration.clubhouseClient().ListWorkflow()
+func (migration *Migration) ListClubhouseWorkflow() ([]clubhouse.Workflow, error){
+	return migration.clubhouseClient().ListWorkflows()
 }
 
-func (migration *Migration) ClubhouseEpics() ([]clubhouse.Epic, error){
-	return migration.clubhouseClient().EpicList()
+func (migration *Migration) ListClubhouseEpics() ([]clubhouse.Epic, error){
+	return migration.clubhouseClient().ListEpics()
 }
 
-const (
-	ClubhouseBug = "bug"
-	ClubhouseChore = "chore"
-	ClubhouseFeature = "feature"
-)
+func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowState, project clubhouse.Project, card *github.ProjectCard) (*clubhouse.Story, error){
+	note := notNullString(card.Note, "- Github Card Issue -")
+	name, _ := goutils.Abbreviate(note, 64)
+	var payload clubhouse.CreateStoryParams
 
-func (migration *Migration) ClubhouseProjectStates(story clubhouse.CreateStory) (clubhouse.Story, error){
-	return migration.clubhouseClient().CreateStory(story)
-}
+	re := regexp.MustCompile(`^https:\/\/api\.github\.com\/repos\/(.*)\/(.*)\/issues/(.*)$`)
 
-func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.State, project clubhouse.Project, card *github.ProjectCard) (clubhouse.Story, error){
-	return migration.clubhouseClient().CreateStory(clubhouse.CreateStory{
-		CreatedAt: &card.CreatedAt.Time,
-		Name: *card.Note,
-		ProjectID: project.ID,
-		ExternalID: *card.URL,
-		WorkflowStateID: state.ID,
-	})
+	// Handle if the github project card is a github issue.
+	// If it is the card won't contain anything, its all in the issue.
+	if card.ContentURL != nil && len(re.FindStringIndex(*card.ContentURL)) > 0 {
+		var user string
+		var repo string
+		var numberString string
+		var number int64
+		isClosed := false
+
+		matches := re.FindStringSubmatch(*card.ContentURL)
+		user = matches[1]
+		repo = matches[2]
+		numberString = matches[3]
+		number, _= strconv.ParseInt(numberString, 10, 64)
+
+		// If the Card has a content URL then its a Github Issue
+		issue, _, err := migration.Github.Issues.Get(migration.ctx, user, repo, int(number))
+
+		if err != nil {
+			fmt.Println(err)
+			fmt.Println("Cant migrate card:", card.ID)
+			return nil, nil
+		}
+
+		if issue.ClosedAt != nil {
+			isClosed = true
+		}
+
+		htmlUrl := fmt.Sprintf("https://github.com/%s/%s/issues/%d", user, repo, issue.ID)
+		payload = clubhouse.CreateStoryParams{
+			Name: *issue.Title,
+			Description: *issue.Body,
+			ProjectID: project.ID,
+			StoryType: clubhouse.StoryTypeFeature,
+			Archived: isClosed,
+			WorkflowStateID: &state.ID,
+
+			CreatedAt: &card.CreatedAt.Time,
+			ExternalTickets: []clubhouse.CreateExternalTicketParams{
+				{
+					ExternalURL: &htmlUrl,
+					ExternalID: &numberString,
+				},
+			},
+		}
+	} else {
+		payload = clubhouse.CreateStoryParams{
+			Name: name,
+			Description: note,
+			ProjectID: project.ID,
+			StoryType: clubhouse.StoryTypeFeature,
+			Archived: false,
+			WorkflowStateID: &state.ID,
+			CreatedAt: &card.CreatedAt.Time,
+		}
+	}
+
+	return migration.clubhouseClient().StoryCreate(payload)
 }
