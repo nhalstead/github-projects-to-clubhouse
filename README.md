@@ -15,19 +15,19 @@ This program is built to be interactive, so once you provde the [Clubhouse API](
 ```sh
 ghch
 ```
-```
-Commands:
- migrate
-  Move all Github project cards to Clubhouse
-  -ch-token string
-        Clubhouse API Token
-  -gh-token string
-        Github API Token
-```
+> ```
+> Commands:
+>  migrate
+>   Move all Github project cards to Clubhouse
+>   -ch-token string
+>         Clubhouse API Token
+>   -gh-token string
+>         Github API Token
+> ```
 ```sh
 ghch migrate -ch-token {clubhouse-token} -gh-token {github-token}
 ```
-Then follow the onscreen information
+> Then follow the on-screen instructions
 
 
 ## Other Information
