@@ -143,6 +143,7 @@ func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowS
 			Archived: isClosed,
 			WorkflowStateID: &state.ID,
 
+			Tasks: parseTasks(issue.Body),
 			CreatedAt: &card.CreatedAt.Time,
 			ExternalTickets: []clubhouse.CreateExternalTicketParams{
 				{
@@ -159,11 +160,42 @@ func (migration *Migration) GithubCardToClubhouseStory(state clubhouse.WorkflowS
 			StoryType: clubhouse.StoryTypeFeature,
 			Archived: false,
 			WorkflowStateID: &state.ID,
+
+			Tasks: parseTasks(card.Note),
 			CreatedAt: &card.CreatedAt.Time,
 		}
 	}
 
 	return migration.clubhouseClient().StoryCreate(payload)
+}
+
+func parseTasks(body *string) []clubhouse.CreateTaskParams {
+	var tasks []clubhouse.CreateTaskParams
+
+	if body == nil {
+		return tasks
+	}
+
+	var re = regexp.MustCompile(`(?mi)^( |)- \[(x| |)\] (.*)$`)
+
+	for _, match := range re.FindAllStringSubmatch(*body, -1) {
+
+		if len(match) == 0 {
+			continue
+		}
+		isComplete := false
+
+		if strings.ToLower(match[2]) == "x" {
+			isComplete = true
+		}
+
+		tasks = append(tasks, clubhouse.CreateTaskParams{
+			Complete:    isComplete,
+			Description: match[3],
+		})
+	}
+
+	return tasks
 }
 
 func MakeTitle(title string) string {
