@@ -1,8 +1,8 @@
 # Github Projects to Clubhouse Migration
 
 This program is written to copy all of the current cards out of the selected Github Project and create them
- in Clubhouse as stories using both of their free APIs. This process will move cards that are issues (with their
- information copied as well) and cards/issues that use markdown checkbox lists are converted into Clubhouse tasks.
+ in Clubhouse as stories using both of their free APIs. This process will move cards that are linked to issues.
+Any cards/issues that has markdown checkbox lists are converted into Clubhouse tasks.
 
 To run the program you have to either grab the latest release or download and build the code for your platform.
 
