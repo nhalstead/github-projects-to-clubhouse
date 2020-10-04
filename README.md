@@ -1,13 +1,13 @@
 # Github Projects to Clubhouse Migration
 
 This program is written to copy all of the current cards out of the selected Github Project and create them
- in Clubhouse as stories using both of their free APIs. This process will move cards that are linked to issues.
-Any cards/issues that has markdown checkbox lists are converted into Clubhouse tasks.
+ in Clubhouse as stories using both of their free APIs. This process will also move cards that have been converted
+ to issues. Any cards/issues that contain markdown checkbox lists are converted into Clubhouse tasks.
 
 To run the program you have to either grab the latest release or download and build the code for your platform.
 
-This program is built to be interactive, so once you provde the [Clubhouse API token](https://app.clubhouse.io/settings/account/api-tokens)
- and the [GiHub API token](https://github.com/settings/tokens) the program it will guide you through the entire migration process.
+This program is built to be interactive, so once you provde the [Clubhouse API](https://app.clubhouse.io/settings/account/api-tokens)
+ and [GiHub API](https://github.com/settings/tokens) tokens the program it will guide you through the entire migration process.
 
 
 ## Usage:
@@ -25,7 +25,7 @@ Commands:
         Github API Token
 ```
 ```sh
-ghch -ch-token {clubhouse-token} -gh-token {github-token}
+ghch migrate -ch-token {clubhouse-token} -gh-token {github-token}
 ```
 Then follow the onscreen information
 
